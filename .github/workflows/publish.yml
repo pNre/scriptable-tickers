@@ -1,0 +1,32 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Read script file
+        id: get_script
+        run: echo "::set-output name=script::$(awk '{printf "%s\\n", $0}' tickers.js | sed 's/"/\\"/g')"
+      - name: Replace file placeholders
+        uses: alexrogalskiy/github-action-tag-replacer@master
+        with:
+          sourceFile: 'tickers.scriptable'
+          placeholder: '{{ SCRIPT }}'
+          replacement: ${{ steps.get_script.outputs.script }}
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: tickers.scriptable
+          tag_name: release-${{ github.run_number }}
+          name: Release ${{ github.run_number }}
+          draft: false
+          prerelease: false

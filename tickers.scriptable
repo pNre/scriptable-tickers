@@ -1,0 +1,11 @@
+{
+  "always_run_in_app" : false,
+  "icon" : {
+    "color" : "teal",
+    "glyph" : "gem"
+  },
+  "name" : "Tickers",
+  "script" : "{{ SCRIPT }}",
+  "share_sheet_inputs" : [
+  ]
+}
