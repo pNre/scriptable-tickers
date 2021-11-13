@@ -35,6 +35,11 @@ const crypto = [
     name: "Solana",
   },
   {
+    id: "polkadot",
+    symbol: "DOT",
+    name: "Polkadot",
+  },
+  {
     id: "harmony",
     symbol: "ONE",
     name: "Harmony",
