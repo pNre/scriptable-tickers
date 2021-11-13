@@ -1,7 +1,8 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: deep-blue; icon-glyph: book; share-sheet-inputs: plain-text;
-// Scam Ticker Widget
+// Tickers Widget
+const showRefreshTime = false;
 const stocks = [
   "^GSPC",
   "AAPL",
@@ -11,7 +12,6 @@ const stocks = [
   "ASML",
   "SHOP",
   "CMPS",
-  "CYBN",
 ];
 const crypto = [
   {
@@ -51,9 +51,18 @@ const crypto = [
   },
 ];
 
-const data = (
-  await Promise.all([getStockData(stocks), getCryptoData(crypto)])
-).flat();
+let tasks = [];
+if (args.widgetParameter) {
+  if (args.widgetParameter === "stocks") {
+    tasks = [getStockData(stocks)];
+  } else if (args.widgetParameter === "crypto") {
+    tasks = [getCryptoData(crypto)];
+  }
+} else {
+  tasks = [getStockData(stocks), getCryptoData(crypto)];
+}
+
+const data = (await Promise.all(tasks)).flat();
 
 const widget = await createWidget(data);
 widget.backgroundColor = Color.black();
@@ -63,6 +72,32 @@ if (config.runsInWidget) {
   widget.presentLarge();
 }
 Script.complete();
+
+function makeCell(cell, symbol, changePercent, price) {
+  cell.layoutVertically();
+
+  const symbolText = cell.addText(symbol);
+  symbolText.lineLimit = 1;
+  symbolText.textColor = Color.white();
+  symbolText.font = Font.boldMonospacedSystemFont(14);
+
+  cell.addSpacer(4);
+
+  const isPositive = changePercent >= 0;
+  const sign = isPositive ? "+" : "-";
+  const changeText = cell.addText(
+    sign + Math.abs(changePercent).toFixed(2) + "%"
+  );
+  changeText.textColor = isPositive ? Color.green() : Color.red();
+  changeText.font = Font.boldMonospacedSystemFont(14);
+
+  cell.addSpacer(4);
+
+  const priceText = cell.addText(price);
+  priceText.textColor = Color.white();
+  priceText.textOpacity = 0.7;
+  priceText.font = Font.regularMonospacedSystemFont(12);
+}
 
 async function createWidget(data) {
   const columns = 4;
@@ -81,39 +116,23 @@ async function createWidget(data) {
 
     const column = instrumentsStack.addStack();
     column.layoutVertically();
+    column.topAlignContent();
 
     for (let r = 0; r < rows; r++) {
       const cell = column.addStack();
-      cell.layoutVertically();
 
       const i = r * columns + c;
       if (i >= data.length) {
-        break;
+        continue;
+      } else {
+        const instrument = data[i];
+        makeCell(
+          cell,
+          instrument.symbol,
+          instrument.changePercent,
+          instrument.price
+        );
       }
-
-      const instrument = data[i];
-
-      const symbolText = cell.addText(instrument.symbol);
-      symbolText.lineLimit = 1;
-      symbolText.textColor = Color.white();
-      symbolText.font = Font.boldMonospacedSystemFont(14);
-
-      cell.addSpacer(4);
-
-      const sign = instrument.changePercent >= 0 ? "+" : "-";
-      const changeText = cell.addText(
-        sign + Math.abs(instrument.changePercent).toFixed(2) + "%"
-      );
-      changeText.textColor =
-        instrument.changePercent > 0 ? Color.green() : Color.red();
-      changeText.font = Font.boldMonospacedSystemFont(14);
-
-      cell.addSpacer(4);
-
-      const priceText = cell.addText(instrument.price);
-      priceText.textColor = Color.white();
-      priceText.textOpacity = 0.7;
-      priceText.font = Font.regularMonospacedSystemFont(12);
 
       if (r < rows - 1) {
         column.addSpacer(16);
@@ -121,16 +140,22 @@ async function createWidget(data) {
     }
   }
 
-  const refreshTimeStack = widget.addStack();
-  refreshTimeStack.bottomAlignContent();
-  refreshTimeStack.addSpacer();
+  const bottomSpacingStack = widget.addStack();
+  bottomSpacingStack.layoutVertically();
+  bottomSpacingStack.addSpacer();
 
-  const refreshTime = refreshTimeStack.addDate(new Date());
-  refreshTime.applyTimeStyle();
-  refreshTime.lineLimit = 1;
-  refreshTime.textColor = Color.white();
-  refreshTime.textOpacity = 0.5;
-  refreshTime.font = Font.regularSystemFont(8);
+  if (showRefreshTime) {
+    const refreshTimeStack = widget.addStack();
+    refreshTimeStack.bottomAlignContent();
+    refreshTimeStack.addSpacer();
+
+    const refreshTime = refreshTimeStack.addDate(new Date());
+    refreshTime.applyTimeStyle();
+    refreshTime.lineLimit = 1;
+    refreshTime.textColor = Color.white();
+    refreshTime.textOpacity = 0.5;
+    refreshTime.font = Font.regularSystemFont(8);
+  }
 
   return widget;
 }
